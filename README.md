@@ -10,6 +10,15 @@ In the Preferences -> Raspberry PI Configuration - Interface
  - Serial Port (enable)
  - Serial Console (disable)
 
+### Raspberry PI - SPI
+You will need to install py-spidev. I recommend to compile from source.
+
+```bash
+    git clone https://github.com/doceme/py-spidev.git
+    cd py-spidev
+    make all PYTHON=python3
+```
+
 ## Interface Description
 There are 2 SPI interface in XAPIZ3500. One is connected to PI while the other is connected to K210.
 
