@@ -76,8 +76,6 @@ def main(imgsrc):
 
 
 
-    PAYLOAD_SIZE = 2048
-    BLOCK_SIZE = 2048
     boxstruct = namedtuple('boxstruct',['x1','y1','x2','y2','boxclass','prob'])
 
 
@@ -105,7 +103,7 @@ def main(imgsrc):
     print("Large image size : "+str(np.shape(img_large)))
 
     #Send the small image to K210
-    xapispi.spi_send_img(img_small,BLOCK_SIZE)
+    xapispi.spi_send_img(img_small)
 
     boxes = xapispi.spi_getbox()
 

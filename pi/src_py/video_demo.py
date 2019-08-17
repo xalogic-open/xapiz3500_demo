@@ -13,9 +13,6 @@ import sys
 from gpiozero import LED
 
 
-
-
-
 def image_resize(image, width = None, height = None, inter = cv2.INTER_NEAREST):
     # initialize the dimensions of the image to be resized and
     # grab the image size
@@ -56,17 +53,15 @@ def image_resize(image, width = None, height = None, inter = cv2.INTER_NEAREST):
     # return the resized image
     return resized
 
-
-
-
 def main(model_def,vidsrc):
+  print("Reset K210")
   k210_reset = LED(27)
-
 
   k210_reset.off()
   time.sleep(0.5)
   k210_reset.on()
   time.sleep(0.5)
+  print("Reset K210 .... Done")
 
 
   #VOC
@@ -79,8 +74,6 @@ def main(model_def,vidsrc):
   xapispi = xapi_spi.Xapi_spi(0,0,60000000)
   xapispi.init()
 
-
-  BLOCK_SIZE = 2048
   boxstruct = namedtuple('boxstruct',['x1','y1','x2','y2','boxclass','prob'])
 
 
@@ -94,7 +87,7 @@ def main(model_def,vidsrc):
 
   #Send a dummy image over
   img = np.empty((224, 320, 3), dtype=np.uint8)
-  xapispi.spi_send_img(img,BLOCK_SIZE)
+  xapispi.spi_send_img(img)
 
 
   font                   = cv2.FONT_HERSHEY_PLAIN
@@ -111,17 +104,16 @@ def main(model_def,vidsrc):
 
   starttime = datetime.datetime.now()
   while(cap.isOpened()):
+
     # Capture frame-by-frame
     ret, frame = cap.read()
     if ret == True:
-  
       img = image_resize(frame, width=320, height = 224)
   
   
       if not pending_box:
         pending_box = True
-        xapispi.spi_send_img(img,BLOCK_SIZE)
-  
+        xapispi.spi_send_img(img)
   
       boxes = xapispi.spi_getbox(False) #Non-blocking
   
@@ -135,6 +127,7 @@ def main(model_def,vidsrc):
         else:
           print("Box not ready")
       else:
+        #print ("No Boxes detected")
         pending_box = False
         boxesold = boxes
         fps += 1 

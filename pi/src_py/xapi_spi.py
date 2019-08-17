@@ -1,4 +1,4 @@
-import spidev
+import xaspidev
 import numpy as np
 import struct
 from collections import namedtuple 
@@ -6,24 +6,26 @@ from collections import namedtuple
 
 
 class Xapi_spi:
-  def __init__(self, bus, device, speed):
+  def __init__(self, bus, device, speed, xa_blocksize=3072):
     self.bus = bus
     self.device = device
     self.speed = speed
+    self.xa_blocksize = xa_blocksize
 
 ################################################
 # Initialize SPI
 ################################################
   def init(self):
-    self.spi = spidev.SpiDev()
+    self.spi = xaspidev.XaSpiDev()
     self.spi.open(self.bus, self.device)
     self.spi.max_speed_hz = self.speed
+    self.spi.xa_blocksize = self.xa_blocksize
 
 ################################################
 # Takes a full image (BGR) from application 
 # and send it as R - G - B
 ################################################
-  def spi_send_img(self, img, blocksize):
+  def spi_send_img(self, img):
     tmpbuf = []
     _b, _g, _r    = img[:, :, 0], img[:, :, 1], img[:, :, 2]
     #Create a 1D view of the Channels
@@ -32,55 +34,9 @@ class Xapi_spi:
     r = _r.ravel()
 
     #Send image over SPI, in R->G->B
-
-    #totalsize  = len(r) + len(g) + len(b)
-    #print (totalsize)
-    #tmpbuf.append(0xaa)
-    #tmpbuf.append(0x55)
-    #tmpbuf.append(0xaa)
-    #tmpbuf.append(0x55)
-    #tmpbuf.append(0x10)
-    #tmpbuf.append(totalsize & 0xff)
-    #tmpbuf.append(totalsize>>8 & 0xff)
-    #tmpbuf.append(totalsize>>16 & 0xff)
-    ##print (tmpbuf)
-    #self.spi_tx(tmpbuf)
-    self.spi_wr_img(r,blocksize)
-    self.spi_wr_img(g,blocksize)
-    self.spi_wr_img(b,blocksize)
-
-
-################################################
-# Write data to FIFO while breaking it down 
-# into blocks.
-################################################
-  def spi_wr_img(self, img, blocksize):
-    xfersize = len(img)
-    xferindex = 0
-
-    while xfersize != 0:
-      if xfersize >= blocksize:
-        #Ensure FPGA buffer is sufficient
-        while self.spi_wrspace() < blocksize:
-          pass
-
-        wrbuf = img[xferindex:xferindex+blocksize]
-        #self.spi_tx(wrbuf)
-        self.spi_tx(img[xferindex:xferindex+blocksize])
-
-
-        xfersize = xfersize - blocksize
-        xferindex = xferindex + blocksize
-
-      else:
-        #Ensure FPGA buffer is sufficient
-        while self.spi_wrspace() < xfersize:
-          pass
-
-        wrbuf = img[xferindex:]
-        self.spi_tx(wrbuf)
-        xfersize = 0
-        xferindex = 0
+    self.spi.xa_writebulk(r);
+    self.spi.xa_writebulk(g);
+    self.spi.xa_writebulk(b);
 
 
 ################################################
@@ -92,28 +48,22 @@ class Xapi_spi:
     boxstruct = namedtuple('boxstruct',['x1','y1','x2','y2','boxclass','prob'])
     boxes=[]
 
+    rxbuf = self.spi.xa_readmeta();
+
     if towait:
-      while self.spi_rdavail() < 4: 
-        pass
+      while len(rxbuf) == 1:
+        rxbuf = self.spi.xa_readmeta();
     else:
-      if self.spi_rdavail() < 4: 
+      if len(rxbuf) == 1:
         boxes.append("na")
         return boxes
     
-    txbuf = np.zeros((4),dtype=int)
-    rxbuf = self.spi_rx(txbuf)
-    numbox = rxbuf[0]
 
-    if numbox == 0:
+    if len(rxbuf) == 2:
       return boxes
     else:
-      xfercnt = numbox * 16
-
-      while self.spi_rdavail() < xfercnt: 
-        pass
-    
-      txbuf = np.zeros((xfercnt),dtype=int)
-      rxbuf = self.spi_rx(txbuf)
+      #print (len(rxbuf))
+      numbox = len(rxbuf)>>4
 
       for i in range(numbox):
         onebox = rxbuf[(i*16):(i*16)+16]
