@@ -71,6 +71,7 @@ def main(model_def,vidsrc):
   fps_store = 0
 
 
+  #xapispi = xapi_spi.Xapi_spi(0,0,60000000)
   xapispi = xapi_spi.Xapi_spi(0,0,60000000)
   xapispi.init()
 
@@ -111,29 +112,13 @@ def main(model_def,vidsrc):
       img = image_resize(frame, width=320, height = 224)
   
   
-      if not pending_box:
-        pending_box = True
-        xapispi.spi_send_img(img)
+      xapispi.spi_send_img(img)
+      boxes = xapispi.spi_getbox()
   
-      boxes = xapispi.spi_getbox(False) #Non-blocking
+      fps += 1 
   
-      if (len(boxes) > 0):
-        #print (boxes)
-        if boxes[0] != "na":
-          #print("box update")
-          boxesold = boxes
-          pending_box = False
-          fps += 1 
-        else:
-          print("Box not ready")
-      else:
-        #print ("No Boxes detected")
-        pending_box = False
-        boxesold = boxes
-        fps += 1 
-  
-      if len(boxesold) > 0 and boxes[0] != "na":
-        for box in boxesold:
+      if len(boxes) > 0:
+        for box in boxes:
           x1 = box.x1
           x2 = box.x2
           y1 = box.y1

@@ -1,0 +1,1 @@
+kflash -p /dev/ttyS0 -B xapiz model/xapiz3500_yolo_20_demo.kfpkg -b 1152000 -t
